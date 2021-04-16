@@ -11,6 +11,7 @@ import (
 
 	"shop/application/libs/easygorm"
 	"shop/application/models"
+	madmin "shop/application/models/admin"
 	"shop/service/dao/drole"
 
 	"github.com/jinzhu/configor"
@@ -86,7 +87,8 @@ func main() {
 		},
 		Models: []interface{}{
 			&models.Account{},
-			//&models.User{},
+			&models.User{},
+			&madmin.Admin{},
 			&models.Role{},
 			&models.Permission{},
 			&models.Config{},
@@ -219,19 +221,60 @@ func CreateAdmin() {
 		roleNames = append(roleNames, role.Name)
 	}
 
-	admin := &models.Account{
-		Username: libs.Config.Admin.Username,
-		Name:     libs.Config.Admin.Name,
-		Password: libs.HashPassword(libs.Config.Admin.Password),
-		Avatar:   "https://wx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIPbZRufW9zPiaGpfdXgU7icRL1licKEicYyOiace8QQsYVKvAgCrsJx1vggLAD2zJMeSXYcvMSkw9f4pw/132",
-		Intro:    "超级弱鸡程序猿一枚！！！！",
-		Model:    gorm.Model{CreatedAt: time.Now()},
-		RoleIds:  roleIds,
+	//先创建user，客户client，管理员admin，的基本信息
+	user := &models.User{
+		RealName: "",
+		Nickname: "",
+		Phone: "18888888888",
+		Birthday: time.Now().Unix(),
+		CardId: "",
+		Mark: "",
+		Avatar: "https://wx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIPbZRufW9zPiaGpfdXgU7icRL1licKEicYyOiace8QQsYVKvAgCrsJx1vggLAD2zJMeSXYcvMSkw9f4pw/132",
+		Address: "厦门市湖里区金海湾1号楼B栋",
+	}
+
+	easygorm.GetEasyGormDb().Create(user)
+
+	// 创建管理员的信息表
+	admin := &madmin.Admin{
+		MerchId: 1,
+		Uid: 1,
+		RealName: "宅职社",
+		Nickname: "益帮手",
+		Phone: "18888888888",
+		Email: "xmxlb@163.com",
+		Avatar: "https://wx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTIPbZRufW9zPiaGpfdXgU7icRL1licKEicYyOiace8QQsYVKvAgCrsJx1vggLAD2zJMeSXYcvMSkw9f4pw/132",
+		UseApp: 1,
+		UsePc: 1,
+		Type: 1,
+		Status: 1,
+		LastIp: "",
+		LastTime: time.Now().Unix(),
 	}
 
 	easygorm.GetEasyGormDb().Create(admin)
 
-	err := daccount.AddRoleForUser(admin)
+	account := &models.Account{
+		Username: libs.Config.Admin.Username,
+		Password: libs.HashPassword(libs.Config.Admin.Password),
+		Identity: 1,  // 客户表client_id或管理员表admin_id
+		Type: 1,        // 是否为管理员
+		Status: 1,
+		Phone: "18888888888",
+		Email: "xmxlb@163.com",
+		CreatedAt: time.Now().Unix(),
+		CreatedUid: 1,
+		UpdatedAt: time.Now().Unix(),
+		UpdatedUid: 1,
+		Effect: 0,
+		Memo: "超级弱鸡程序猿一枚！！！！",
+
+		RoleIds:  roleIds,
+	}
+
+	easygorm.GetEasyGormDb().Create(account)
+
+	err := daccount.AddRoleForUser(account)
 	if err != nil {
 		panic(fmt.Sprintf("添加管理员失败：%+v", err))
 	}

@@ -8,8 +8,7 @@ package product
 
 import (
 	"encoding/json"
-	"fmt"
-	"shop/application/libs/easygorm"
+	"gorm.io/gorm"
 	_package "shop/application/libs/package"
 	"shop/application/models/product"
 )
@@ -39,11 +38,18 @@ type PostProductAttrValues struct {
 	} `json:"attrs" validate:"required" errors:"商品规格"`
 }
 
+/* 定义结构体 */
+type ProductAttrCalueService struct {
+	/* 错误体 */
+	isErr error
+	Sql   gorm.DB
+}
+
 /**
 删除商品
 */
-func DelectProductAttrValue(ProductId int) error {
-	Sql := easygorm.GetEasyGormDb().Model(product.StoreProductAttrsValue{})
+func (ser *ProductAttrCalueService) DelectProductAttrValue(ProductId int) error {
+	Sql := ser.Sql.Model(product.StoreProductAttrsValue{})
 	if err := Sql.Where("product_id = ? ", ProductId).Delete(&product.StoreProductAttrsValue{}).Error; err != nil {
 		return err
 	}
@@ -53,11 +59,11 @@ func DelectProductAttrValue(ProductId int) error {
 /**
 创建商品属性值
 */
-func CreateProductAttrValue(attr PostProductAttrValues, Authority _package.Authority) {
+func (ser *ProductAttrCalueService) CreateProductAttrValue(attr PostProductAttrValues, Authority _package.Authority) {
 	//删除属性表
-	DelectProductAttrValue(attr.ProductId)
+	ser.DelectProductAttrValue(attr.ProductId)
 	for _, v := range attr.Attrs {
-		Sql := easygorm.GetEasyGormDb().Model(product.StoreProductAttrsValue{})
+		Sql := ser.Sql.Model(product.StoreProductAttrsValue{})
 		Value := product.StoreProductAttrsValue{}
 		_package.StructAssign(&Value, &v)
 		_package.AddStructCommon(0, &Value, Authority)
@@ -74,8 +80,16 @@ func CreateProductAttrValue(attr PostProductAttrValues, Authority _package.Autho
 		Value.Unique = _package.GetGUID().Hex()
 		Value.ProductId = attr.ProductId
 		if err := Sql.Create(&Value).Error; err != nil {
-			fmt.Println(v)
+			ser.isErr = err
+			return
 		}
 	}
 
+}
+
+func (ser *ProductAttrCalueService) Error() string {
+	if ser.isErr != nil {
+		return ser.isErr.Error()
+	}
+	return ""
 }

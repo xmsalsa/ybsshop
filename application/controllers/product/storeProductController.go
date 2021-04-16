@@ -29,14 +29,14 @@ func PostProduct(ctx iris.Context) {
 			return
 		}
 	}
-	easygorm.Begin()
 	pro := new(product.ProductService)
+	pro.Sql = *easygorm.GetEasyGormDb().Begin()
 	data := pro.CreateProduct(param, _package.GetAuthority(ctx))
 	if pro.Error() != "" {
-		easygorm.Rollback()
+		pro.Sql.Rollback()
 		ctx.JSON(response.NewResponse(response.DataEmptyErr.Code, data, pro.Error()))
 	} else {
-		easygorm.Commit()
+		pro.Sql.Commit()
 		ctx.JSON(response.NewResponse(response.NoErr.Code, data, response.NoErr.Msg))
 	}
 

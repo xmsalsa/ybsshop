@@ -11,7 +11,7 @@ import (
 )
 
 type StoreProductRule struct {
-	models.CommonModel
+	models.Model
 	Id         int    `gorm:"not null primary_key INT(10)" json:"id"`
 	MerchId    int    `gorm:"not null default 0  INT(11)"  json:"merch_id"`
 	RuleName   string `gorm:"not null comment('规格名称') VARCHAR(32)"`

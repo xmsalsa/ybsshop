@@ -11,7 +11,7 @@ import (
 )
 
 type StoreCategory struct {
-	models.CommonModel
+	models.Model
 	Id         int    `gorm:"not null primary_key INT(10)" json:"id"`
 	MerchId    int    `gorm:"not null default 0  INT(11)"  json:"merch_id" json:"merch_id"`
 	Pid        int    `gorm:"not null comment('父id') index MEDIUMINT(11)" json:"pid"`

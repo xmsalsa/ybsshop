@@ -24,7 +24,7 @@ type DBServer struct {
 	enforcer *casbin.Enforcer
 	*Config
 	isBegin int
-	Begin   *gorm.DB
+	Begin   gorm.DB
 }
 
 type Casbin struct {
@@ -34,11 +34,15 @@ type Casbin struct {
 
 // Config 设置属性
 type Config struct {
-	GormConfig *gorm.Config
-	Adapter    string        // 类型
-	Conn       string        // 名称
-	Models     []interface{} // 模型数据
-	Casbin     *Casbin
+	GormConfig      *gorm.Config
+	Adapter         string        // 类型
+	Conn            string        // 名称
+	Models          []interface{} // 模型数据
+	Casbin          *Casbin
+	ConnMaxIdleTime time.Duration
+	ConnMaxLifetime time.Duration
+	MaxIdleConns    int
+	MaxOpenConns    int
 }
 
 func Init(c *Config) error {
@@ -137,10 +141,10 @@ func (db *DBServer) initGormDb() error {
 	err = db.db.Use(
 		dbresolver.Register(
 			dbresolver.Config{ /* xxx */ }).
-			SetConnMaxIdleTime(time.Hour).
-			SetConnMaxLifetime(24 * time.Hour).
-			SetMaxIdleConns(100).
-			SetMaxOpenConns(200),
+			//SetConnMaxIdleTime(db.Config.ConnMaxIdleTime).
+			SetConnMaxLifetime(db.Config.ConnMaxLifetime).
+			SetMaxIdleConns(db.Config.MaxIdleConns).
+			SetMaxOpenConns(db.Config.MaxOpenConns),
 	)
 	if err != nil {
 		return err
@@ -171,15 +175,19 @@ func (db *DBServer) initEnforcer() error {
 
 func GetEasyGormDb() *gorm.DB {
 	if easyGorm.isBegin == 1 {
-		return easyGorm.Begin
+		/* 指针变量的存储地址 */
+		fmt.Printf("easyGorm.GetEasyGormDb 变量储存的指针地址: %x\n", easyGorm.Begin)
+		return &easyGorm.Begin
 	}
 	return easyGorm.db
 }
 
 func Begin() *gorm.DB {
-	easyGorm.Begin = easyGorm.db.Begin()
+	sql := easyGorm.db.Begin()
+	easyGorm.Begin = *sql
+	fmt.Printf("easyGorm.Begin 变量储存的指针地址: %x\n", easyGorm.Begin)
 	easyGorm.isBegin = 1
-	return easyGorm.db
+	return sql
 }
 
 func Rollback() {

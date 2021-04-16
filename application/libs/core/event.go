@@ -8,6 +8,7 @@ package core
 
 import (
 	"encoding/json"
+	"gorm.io/gorm"
 	"reflect"
 	"sync"
 )
@@ -18,6 +19,7 @@ type Event struct {
 	Params map[string]interface{}
 	Data   map[string]interface{}
 	IsErr  error
+	Sql    gorm.DB
 }
 
 /**   暂不支持    **/

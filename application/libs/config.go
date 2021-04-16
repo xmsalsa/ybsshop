@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/jinzhu/configor"
-	"shop/application/libs/easygorm"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
+	"shop/application/libs/easygorm"
 )
 
 var Config = struct {
@@ -26,15 +27,19 @@ var Config = struct {
 	}
 	Admin struct {
 		Username string `env:"AdminUsername" default:"admin"`
-		Name     string `env:"AdminName" default:"admin"`
+		//Name     string `env:"AdminName" default:"admin"`
 		Password string `env:"AdminPassword" default:"123456"`
 		Rolename string `env:"AdminRolename" default:""`
 	}
 	DB struct {
-		Prefix  string `env:"DBPrefix" default:""`
-		Name    string `env:"DBName" default:"blog"`
-		Adapter string `env:"DBAdapter" default:"mysql"`
-		Conn    string `env:"DBConn" default:"root:123456@tcp(localhost:3306)/iris?parseTime=True&loc=Local"`
+		Prefix          string        `env:"DBPrefix" default:""`
+		Name            string        `env:"DBName" default:"blog"`
+		Adapter         string        `env:"DBAdapter" default:"mysql"`
+		Conn            string        `env:"DBConn" default:"root:123456@tcp(localhost:3306)/iris?parseTime=True&loc=Local"`
+		ConnMaxIdleTime time.Duration `env:"DBConnMaxIdleTime" default:"28800"`
+		ConnMaxLifetime time.Duration `env:"DBConnMaxLifetime" default:"28800"`
+		MaxIdleConns    int           `env:"DBMaxIdleConns" default:"100"`
+		MaxOpenConns    int           `env:"DBMaxOpenConns" default:"200"`
 	}
 	Redis struct {
 		Host     string `env:"RedisHost" default:"localhost"`
@@ -97,6 +102,10 @@ func GetGormConfig() *easygorm.Config {
 			Path:   Config.Casbin.Path,
 			Prefix: Config.Casbin.Prefix,
 		},
+		MaxIdleConns:    Config.DB.MaxIdleConns,
+		MaxOpenConns:    Config.DB.MaxOpenConns,
+		ConnMaxIdleTime: Config.DB.ConnMaxIdleTime,
+		ConnMaxLifetime: Config.DB.ConnMaxLifetime,
 	}
 	if Config.DB.Prefix != "" {
 		c.GormConfig = &gorm.Config{NamingStrategy: schema.NamingStrategy{TablePrefix: Config.DB.Prefix}}

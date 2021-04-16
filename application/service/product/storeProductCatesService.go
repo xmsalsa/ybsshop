@@ -9,6 +9,7 @@ package product
 import (
 	"errors"
 	"fmt"
+	"gorm.io/gorm"
 	"shop/application/libs/easygorm"
 	_package "shop/application/libs/package"
 	"shop/application/models/product"
@@ -29,6 +30,7 @@ type productCatesService interface {
 type ProductCatesService struct {
 	/* 错误体 */
 	isErr error
+	Sql   gorm.DB
 }
 
 /**
@@ -60,7 +62,7 @@ func (ser *ProductCatesService) CreateProductCates(attr PostProductCates, Author
 		}
 	}
 	for _, v := range attr.CateID {
-		Sql := easygorm.GetEasyGormDb().Model(product.StoreProductCate{})
+		Sql := ser.Sql.Model(product.StoreProductCate{})
 		Value := product.StoreProductCate{
 			CateId:    v,
 			ProductId: attr.ProductId,

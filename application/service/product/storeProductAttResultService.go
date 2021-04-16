@@ -9,6 +9,7 @@ package product
 import (
 	"encoding/json"
 	"fmt"
+	"gorm.io/gorm"
 	"shop/application/libs/easygorm"
 	_package "shop/application/libs/package"
 	"shop/application/models/product"
@@ -48,38 +49,11 @@ func findStoreProductAttr(productId int) (product.StoreProductAttrsResult, error
 	return attr, nil
 }
 
-/**	创建商品属性值 */
-func CreateProductAttrService(attr PostProductAttrService, Authority _package.Authority) (product.StoreProductAttrsResult, error) {
-	Sql := easygorm.GetEasyGormDb()
-	att, s := findStoreProductAttr(attr.ProductId)
-	data := make(map[string]interface{})
-	data["attr"] = attr.Items
-	data["value"] = attr.Attrs
-	Result, _ := _package.MapToJson(data)
-	if s != nil {
-		att := product.StoreProductAttrsResult{
-			ProductId:  attr.ProductId,
-			ChangeTime: time.Now().Unix(),
-			Result:     Result,
-		}
-		_package.AddStructCommon(0, &att, Authority)
-		if err := Sql.Create(&att); err.Error != nil {
-			return att, err.Error
-		}
-		return att, nil
-	}
-	att.Result = Result
-	att.ChangeTime = time.Now().Unix()
-	if err := Sql.Save(&att); err.Error != nil {
-		return att, err.Error
-	}
-	return att, nil
-}
-
 /* 定义结构体 */
 type ProductAttrResultService struct {
 	/* 错误体 */
 	isErr error
+	Sql   gorm.DB
 }
 
 type GetGoodsAttrResult struct {
@@ -104,6 +78,35 @@ type GetGoodsAttrResult struct {
 		Brokerage    int     `json:"brokerage"`
 		BrokerageTwo int     `json:"brokerage_two"`
 	} `json:"value"`
+}
+
+/**	创建商品属性值 */
+func (ser *ProductAttrResultService) CreateProductAttrService(attr PostProductAttrService, Authority _package.Authority) (product.StoreProductAttrsResult, error) {
+	Sql := ser.Sql
+	att, s := findStoreProductAttr(attr.ProductId)
+	data := make(map[string]interface{})
+	data["attr"] = attr.Items
+	data["value"] = attr.Attrs
+	Result, _ := _package.MapToJson(data)
+	if s != nil {
+		att := product.StoreProductAttrsResult{
+			ProductId:  attr.ProductId,
+			ChangeTime: time.Now().Unix(),
+			Result:     Result,
+		}
+		_package.AddStructCommon(0, &att, Authority)
+		if err := Sql.Create(&att); err.Error != nil {
+			return att, err.Error
+		}
+		return att, nil
+	}
+	att.Result = Result
+	att.ChangeTime = time.Now().Unix()
+	if err := Sql.Save(&att); err.Error != nil {
+		ser.isErr = err.Error
+		return att, err.Error
+	}
+	return att, nil
 }
 
 func (ser *ProductAttrResultService) GetGoodsAttrResult(productId int) GetGoodsAttrResult {

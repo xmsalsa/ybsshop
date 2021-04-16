@@ -7,8 +7,7 @@
 package product
 
 import (
-	"fmt"
-	"shop/application/libs/easygorm"
+	"gorm.io/gorm"
 	"shop/application/models/product"
 	"strings"
 )
@@ -33,11 +32,18 @@ func attrData(data map[string]string) ([]string, []string) {
 	return kEys, iTems
 }
 
+/* 定义结构体 */
+type ProductAttrService struct {
+	/* 错误体 */
+	isErr error
+	Sql   gorm.DB
+}
+
 /**
 删除商品
 */
-func DelectProductAttr(ProductId int) error {
-	Sql := easygorm.GetEasyGormDb().Model(product.StoreProductAttr{})
+func (ser *ProductAttrService) DelectProductAttr(ProductId int) error {
+	Sql := ser.Sql.Model(product.StoreProductAttr{})
 	if err := Sql.Where("product_id = ? ", ProductId).Delete(&product.StoreProductAttr{}).Error; err != nil {
 		return err
 	}
@@ -47,10 +53,10 @@ func DelectProductAttr(ProductId int) error {
 /**
 创建商品属性值
 */
-func CreateProductAttr(attr PostProductAttr) {
+func (ser *ProductAttrService) CreateProductAttr(attr PostProductAttr) {
 	//删除属性表
-	DelectProductAttr(attr.ProductId)
-	Sql := easygorm.GetEasyGormDb().Model(product.StoreProductAttr{})
+	ser.DelectProductAttr(attr.ProductId)
+	Sql := ser.Sql
 	for _, v := range attr.Items {
 		StoreProductAttr := product.StoreProductAttr{
 			ProductId: attr.ProductId,
@@ -59,8 +65,16 @@ func CreateProductAttr(attr PostProductAttr) {
 		StoreProductAttr.AttrName = v.Value
 		StoreProductAttr.AttrValues = strings.Join(v.Detail, ",")
 		if err := Sql.Create(&StoreProductAttr).Error; err != nil {
-			fmt.Println(err)
+			ser.isErr = err
+			return
 		}
 	}
 
+}
+
+func (ser *ProductAttrService) Error() string {
+	if ser.isErr != nil {
+		return ser.isErr.Error()
+	}
+	return ""
 }

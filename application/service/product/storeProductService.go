@@ -9,6 +9,7 @@ package product
 import (
 	"errors"
 	"fmt"
+	"gorm.io/gorm"
 	"shop/application/libs/core"
 	"shop/application/libs/easygorm"
 	"shop/application/libs/logging"
@@ -26,6 +27,7 @@ type productService interface {
 /* 定义结构体 */
 type ProductService struct {
 	/* 错误体 */
+	Sql   gorm.DB
 	isErr error
 }
 
@@ -170,7 +172,7 @@ func (ser *ProductService) CreateProduct(param PostProduct, Authority _package.A
 	param = initAttr(param)
 	//初始产品值
 	StoreProduct := intiData(param)
-	Sql := easygorm.GetEasyGormDb()
+	Sql := ser.Sql
 	_package.AddStructCommon(param.Id, &StoreProduct, Authority)
 	if StoreProduct.Id == 0 {
 		if err := Sql.Create(&StoreProduct); err.Error != nil {
@@ -183,34 +185,29 @@ func (ser *ProductService) CreateProduct(param PostProduct, Authority _package.A
 			return StoreProduct
 		}
 	}
-	//创建更新商品分类表
-	cates := new(ProductCatesService)
-	cates.CreateProductCates(PostProductCates{
-		CateID:    param.CateID,
-		ProductId: StoreProduct.Id,
-	}, Authority)
-	if cates.Error() != "" {
-		ser.isErr = errors.New(cates.Error())
+	//创建事件
+	Dispatcher := new(core.Dispatcher)
+	Dispatcher.AddEventListener("CreateProduct", createProductCates)
+	Dispatcher.AddEventListener("CreateProduct", createProductAttrValue)
+	Dispatcher.AddEventListener("CreateProduct", createProductAttr)
+	Dispatcher.AddEventListener("CreateProduct", createProductAttrService)
+	Dispatcher.AddEventListener("CreateProduct", createProductDescriptionService)
+	var wg sync.WaitGroup
+	Event := core.Event{
+		Wg:   wg,
+		Name: "CreateProduct",
+		Sql:  Sql,
+	}
+	Event.AddParams("id", StoreProduct.Id)
+	Event.AddParams("product", param)
+	Event.AddParams("authority", Authority)
+	Dispatcher.DispatchEvent(&Event)
+	Event.Wg.Wait()
+	Event.Sql.Commit()
+	if Event.Error() != "" {
+		ser.isErr = errors.New(Event.Error())
 		return StoreProduct
 	}
-	//创建更新商品属性表
-	CreateProductAttr(PostProductAttr{
-		ProductId: StoreProduct.Id,
-		Type:      0,
-		Items:     param.Items,
-	})
-	//穿建更新商品属性详情表
-	CreateProductAttrService(PostProductAttrService{
-		Attrs:     param.Attrs,
-		Items:     param.Items,
-		ProductId: StoreProduct.Id,
-	}, Authority)
-	//创建更新商品值表
-	CreateProductAttrValue(PostProductAttrValues{
-		Attrs:     param.Attrs,
-		Items:     param.Items,
-		ProductId: StoreProduct.Id,
-	}, Authority)
 	return StoreProduct
 }
 
@@ -473,6 +470,7 @@ func (ser *ProductService) GetDetails(param GetDetails) GoodsDetailsTem {
 	Dispatcher := new(core.Dispatcher)
 	Dispatcher.AddEventListener("test", getGoodsAttrResult)
 	Dispatcher.AddEventListener("test", getGoodsCategory)
+	Dispatcher.AddEventListener("test", getProductDescriptionService)
 	var wg sync.WaitGroup
 	Event := core.Event{
 		Wg:   wg,
@@ -490,7 +488,7 @@ func (ser *ProductService) GetDetails(param GetDetails) GoodsDetailsTem {
 	Event.GetData("attr", &Attrs)
 	Cat := make([]GetGoodsCategory, 0)
 	Event.GetData("cat", &Cat)
-	//Cat := Service.GetGoodsCategory(_package.SlicesStrFInt(strings.Split(product.CateId, ",")))
+	Event.GetData("description", &Tem.ProductInfo.Description)
 	Tem.CateList = Cat
 	Tem.ProductInfo.Attrs = Attrs.Value
 	Tem.ProductInfo.Items = Attrs.Attr
@@ -537,4 +535,118 @@ func getGoodsCategory(enet *core.Event) {
 		return
 	}
 	enet.AddData("cat", Cat)
+}
+
+func getProductDescriptionService(enet *core.Event) {
+	defer enet.Wg.Done()
+	if enet.Error() != "" {
+		return
+	}
+	//获取分类
+	Des := new(ProductDescriptionsService)
+	Cat := Des.GetProductDescriptionService(enet.Params["id"].(int))
+	if Des.Error() != "" {
+		enet.IsErr = errors.New(Des.Error())
+		return
+	}
+	enet.AddData("description", Cat)
+}
+
+/** 创建更新商品属性表 **/
+func createProductAttr(enet *core.Event) {
+	defer enet.Wg.Done()
+	if enet.Error() != "" {
+		return
+	}
+	Attr := new(ProductAttrService)
+	Attr.Sql = enet.Sql
+	pro := enet.Params["product"].(PostProduct)
+	//创建更新商品属性表
+	Attr.CreateProductAttr(PostProductAttr{
+		ProductId: enet.Params["id"].(int),
+		Type:      0,
+		Items:     pro.Items,
+	})
+	if Attr.Error() != "" {
+		enet.IsErr = errors.New(Attr.Error())
+	}
+}
+
+/** 穿建更新商品属性详情表 **/
+func createProductAttrService(enet *core.Event) {
+	defer enet.Wg.Done()
+	if enet.Error() != "" {
+		return
+	}
+	pro := enet.Params["product"].(PostProduct)
+	Authority := enet.Params["authority"].(_package.Authority)
+	cates := new(ProductAttrResultService)
+	cates.Sql = enet.Sql
+	cates.CreateProductAttrService(PostProductAttrService{
+		Attrs:     pro.Attrs,
+		Items:     pro.Items,
+		ProductId: enet.Params["id"].(int),
+	}, Authority)
+	if cates.Error() != "" {
+		enet.IsErr = errors.New(cates.Error())
+	}
+}
+
+/**	创建更新商品值表 **/
+func createProductAttrValue(enet *core.Event) {
+	defer enet.Wg.Done()
+	if enet.Error() != "" {
+		return
+	}
+	pro := enet.Params["product"].(PostProduct)
+	Authority := enet.Params["authority"].(_package.Authority)
+	cates := new(ProductAttrCalueService)
+	cates.Sql = enet.Sql
+	cates.CreateProductAttrValue(PostProductAttrValues{
+		Attrs:     pro.Attrs,
+		Items:     pro.Items,
+		ProductId: enet.Params["id"].(int),
+	}, Authority)
+	if cates.Error() != "" {
+		enet.IsErr = errors.New(cates.Error())
+	}
+}
+
+/** 创建更新商品分类表 **/
+func createProductCates(enet *core.Event) {
+	defer enet.Wg.Done()
+	if enet.Error() != "" {
+		return
+	}
+	pro := enet.Params["product"].(PostProduct)
+	Authority := enet.Params["authority"].(_package.Authority)
+	cates := new(ProductCatesService)
+	cates.Sql = enet.Sql
+	cates.CreateProductCates(PostProductCates{
+		CateID:    pro.CateID,
+		ProductId: enet.Params["id"].(int),
+	}, Authority)
+	if cates.Error() != "" {
+		enet.IsErr = errors.New(cates.Error())
+	}
+}
+
+/** 穿建更新商品详情表 **/
+func createProductDescriptionService(enet *core.Event) {
+	defer enet.Wg.Done()
+	if enet.Error() != "" {
+		return
+	}
+	pro := enet.Params["product"].(PostProduct)
+	Authority := enet.Params["authority"].(_package.Authority)
+	cates := new(ProductDescriptionsService)
+	cates.Sql = enet.Sql
+	cates.CreateProductDescriptionService(CreateProductDescriptionService{
+		ProductId:   enet.Params["id"].(int),
+		Authority:   Authority,
+		Description: pro.Description,
+	})
+	if cates.Error() != "" {
+		enet.IsErr = errors.New(cates.Error())
+	}
 }

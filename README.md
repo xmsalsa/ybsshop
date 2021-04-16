@@ -7,9 +7,8 @@
     <a href="https://github.com/snowlyg/IrisAdminApi/blob/master/LICENSE"><img src="https://img.shields.io/github/license/snowlyg/IrisAdminApi" alt="Licenses"></a>
 </div>
 
-> 本项目创建于snowlyg的irisadminapi，在此表示感谢！
 > 简单项目仅供学习，欢迎指点！
-
+>
 #### 演示地址
 主分支：
 [http://irisadminapi.snowlyg.com](http://irisadminapi.snowlyg.com)
