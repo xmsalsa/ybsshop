@@ -13,7 +13,7 @@ func (this *Account) TableComment() string {
 }
 
 type Account struct {
-	ID       int    `gorm:"not null; primarykey;AUTO_INCREMENT;type:int;column:id;" json:"id"` //主键 自增`gorm:"primarykey"`
+	ID       int    `gorm:"not null; primary_key;AUTO_INCREMENT;type:int;column:id;" json:"id"` //主键 自增
 	Username string `gorm:"not null;type:varchar(32);column:username;comment('账号');" json:"username"`
 	Password string `gorm:"type:varchar(255)"column:password;comment('密码'); json:"password"`
 	Identity int    `gorm:"column:info_id;type:uint;default:0;column:identity;comment('账号关联的ID')" json:"identity"` // 客户表client_id或管理员表admin_id

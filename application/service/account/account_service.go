@@ -8,15 +8,35 @@ package account
 
 import (
 	"shop/application/libs"
+	"shop/application/libs/easygorm"
 	"shop/application/libs/utils"
 	"shop/application/models"
+
+	"gorm.io/gorm"
 )
 
-func AccountExist(username string) (bool, error) {
+type AccountService struct {
+	Gorm *gorm.DB
+}
+
+func (s AccountService) getGormDb() *gorm.DB {
+	if s.Gorm == nil {
+		s.Gorm = easygorm.GetEasyGormDb()
+	}
+	return s.Gorm
+}
+func (s AccountService) getGormDbWithModel() *gorm.DB {
+	if s.Gorm == nil {
+		s.Gorm = easygorm.GetEasyGormDb()
+	}
+	return s.Gorm.Model(models.Account{})
+}
+
+func (s AccountService) AccountExist(username string) (bool, error) {
 	var exist bool = false
 	account := models.Account{}
 
-	err := utils.GetGormDbWithModel(account).Where("username=?", username).Where("effect=1").Find(&account).Error
+	err := s.getGormDbWithModel().Where("username=?", username).Where("effect=1").Find(&account).Error
 	if err != nil {
 		return exist, err
 	}
@@ -28,7 +48,7 @@ func AccountExist(username string) (bool, error) {
 }
 
 // 创建账号
-func AccountCreate(param SAddAccount) (models.Account, error) {
+func (s AccountService) AccountCreate(param SAddAccount) (models.Account, error) {
 	var err error
 	account := models.Account{}
 
@@ -43,7 +63,7 @@ func AccountCreate(param SAddAccount) (models.Account, error) {
 	if account.Password != "" {
 		account.Password = libs.HashPassword(account.Password)
 	}
-	err = utils.GetGormDbWithModel(account).Create(&account).Error
+	err = s.getGormDbWithModel().Create(&account).Error
 	if err != nil {
 		return account, nil
 	}

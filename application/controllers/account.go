@@ -182,7 +182,10 @@ func AccountExist(ctx iris.Context) {
 		return
 	}
 
-	exsit, err := account.AccountExist(username)
+	accountService := account.AccountService{
+		Gorm: easygorm.GetEasyGormDb(),
+	}
+	exsit, err := accountService.AccountExist(username)
 	if err != nil {
 		ctx.JSON(response.RespFail(err.Error()))
 		return

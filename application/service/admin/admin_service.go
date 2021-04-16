@@ -9,16 +9,36 @@ package admin
 import (
 	"errors"
 	"fmt"
+	"shop/application/libs/easygorm"
 	"shop/application/libs/response"
 	"shop/application/libs/utils"
 	"shop/application/models"
 	madmin "shop/application/models/admin"
 	saccount "shop/application/service/account"
 	suser "shop/application/service/user"
+
+	"gorm.io/gorm"
 )
 
+type AdminService struct {
+	Gorm *gorm.DB
+}
+
+func (s AdminService) getGormDb() *gorm.DB {
+	if s.Gorm == nil {
+		s.Gorm = easygorm.GetEasyGormDb()
+	}
+	return s.Gorm
+}
+func (s AdminService) getGormDbWithModel() *gorm.DB {
+	if s.Gorm == nil {
+		s.Gorm = easygorm.GetEasyGormDb()
+	}
+	return s.Gorm.Model(madmin.Admin{})
+}
+
 // 创建管理员
-func AdminCreate(param SAdminCreate) (map[string]interface{}, error) {
+func (s AdminService) AdminCreate(param SAdminCreate) (map[string]interface{}, error) {
 	var err error
 	data := make(map[string]interface{})
 	user := models.User{}
@@ -27,7 +47,8 @@ func AdminCreate(param SAdminCreate) (map[string]interface{}, error) {
 
 	// 前提, 账号不存在
 	var exist bool = true
-	exist, err = saccount.AccountExist(param.Username)
+	accountService := saccount.AccountService{}
+	exist, err = accountService.AccountExist(param.Username)
 	if err != nil {
 		return data, err
 	}
@@ -36,9 +57,12 @@ func AdminCreate(param SAdminCreate) (map[string]interface{}, error) {
 	}
 
 	// 获取用户, 拿Uid
+	userService := suser.UserService{
+		Gorm: s.getGormDb(),
+	}
 	user_param := suser.UserDetail{}
 	utils.StructCopy(&param, &user_param)
-	user, err = suser.GetUser(user_param)
+	user, err = userService.GetUser(user_param)
 	if err != nil {
 		return data, err
 	}
@@ -47,7 +71,7 @@ func AdminCreate(param SAdminCreate) (map[string]interface{}, error) {
 	addAdmin_param := SAddAdmin{}
 	utils.StructCopy(&param, &addAdmin_param)
 	addAdmin_param.Uid = user.Id
-	admins, err = AddAdmin(addAdmin_param)
+	admins, err = s.AddAdmin(addAdmin_param)
 	if err != nil {
 		return data, err
 	}
@@ -58,7 +82,7 @@ func AdminCreate(param SAdminCreate) (map[string]interface{}, error) {
 	account_param.Identity = admins.Id // 管理员ID
 	account_param.Type = 1             //1 管理员, 2客户
 	account_param.Status = 1           //1 正常
-	account, err = saccount.AccountCreate(account_param)
+	account, err = accountService.AccountCreate(account_param)
 	if err != nil {
 		return data, err
 	}
@@ -78,7 +102,7 @@ func AdminCreate(param SAdminCreate) (map[string]interface{}, error) {
 }
 
 // 创建管理员
-func AddAdmin(param SAddAdmin) (madmin.Admin, error) {
+func (s AdminService) AddAdmin(param SAddAdmin) (madmin.Admin, error) {
 	var err error
 	admins := madmin.Admin{}
 
@@ -87,7 +111,7 @@ func AddAdmin(param SAddAdmin) (madmin.Admin, error) {
 
 	utils.InitModel(&admins, param.UpdatedUid, param.MerchId)
 	utils.StructCopy(&param, &admins)
-	err = utils.GetGormDbWithModel(admins).Create(&admins).Error
+	err = s.getGormDbWithModel().Create(&admins).Error
 	if err != nil {
 		return admins, nil
 	}

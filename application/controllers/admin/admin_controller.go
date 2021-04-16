@@ -7,6 +7,7 @@
 package admin
 
 import (
+	"shop/application/libs/easygorm"
 	_package "shop/application/libs/package"
 	"shop/application/libs/response"
 	"shop/application/libs/utils"
@@ -35,7 +36,10 @@ func AdminCreate(ctx iris.Context) {
 	}
 
 	data := make(map[string]interface{})
-	data, err = sadmin.AdminCreate(param)
+	adminService := sadmin.AdminService{
+		Gorm: easygorm.GetEasyGormDb(),
+	}
+	data, err = adminService.AdminCreate(param)
 	if err != nil {
 		ctx.JSON(response.RespFail(err.Error()))
 		return

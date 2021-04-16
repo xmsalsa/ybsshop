@@ -291,10 +291,10 @@ func AutoMigrates() {
 		return
 	}
 	if err := easygorm.Migrate([]interface{}{
-		&models.Account{},
 		&models.Role{},
 		&models.Permission{},
 		&models.Config{},
+
 	}); err != nil {
 		fmt.Println(fmt.Sprintf("seeder data  auto migrate  err：%+v\n", err))
 		return
@@ -305,7 +305,6 @@ func AutoMigrates() {
 func DropTables() error {
 	prefix := libs.Config.DB.Prefix
 	err := easygorm.GetEasyGormDb().Migrator().DropTable(
-		prefix+"accounts",
 		prefix+"roles",
 		prefix+"permissions",
 		prefix+"configs",

@@ -9,10 +9,30 @@ package user
 import (
 	"errors"
 	"fmt"
+	"shop/application/libs/easygorm"
 	"shop/application/libs/response"
 	"shop/application/libs/utils"
 	"shop/application/models"
+
+	"gorm.io/gorm"
 )
+
+type UserService struct {
+	Gorm *gorm.DB
+}
+
+func (s UserService) getGormDb() *gorm.DB {
+	if s.Gorm == nil {
+		s.Gorm = easygorm.GetEasyGormDb()
+	}
+	return s.Gorm
+}
+func (s UserService) getGormDbWithModel() *gorm.DB {
+	if s.Gorm == nil {
+		s.Gorm = easygorm.GetEasyGormDb()
+	}
+	return s.Gorm.Model(models.User{})
+}
 
 type UserDetail struct {
 	Uid        int    `form:"uid" json:"uid" validate:"omitempty,gt=0" comment:"用户ID"`
@@ -46,7 +66,7 @@ func repsToDesc(user models.User) UserDetail {
 }
 
 // 通过手机号查找客户时, 不存则创建
-func GetUser(param UserDetail) (models.User, error) {
+func (s UserService) GetUser(param UserDetail) (models.User, error) {
 	u := models.User{}
 
 	// 验证手机号码是否正确
@@ -68,7 +88,7 @@ func GetUser(param UserDetail) (models.User, error) {
 	}
 	if len(condition) > 0 {
 		// 查找
-		db := utils.GetGormDbWithModel(u)
+		db := s.getGormDbWithModel()
 		utils.Build(db, condition)
 		err = db.Find(&u).Error
 		if err != nil {
@@ -82,7 +102,7 @@ func GetUser(param UserDetail) (models.User, error) {
 		}
 		adduser_param := UserCreate{}
 		utils.StructCopy(&param, &adduser_param)
-		u, err = create(adduser_param)
+		u, err = s.create(adduser_param)
 		if err != nil {
 			return u, nil
 		}
@@ -91,12 +111,12 @@ func GetUser(param UserDetail) (models.User, error) {
 	return u, nil
 }
 
-func create(param UserCreate) (models.User, error) {
+func (s UserService) create(param UserCreate) (models.User, error) {
 	user := models.User{}
 	utils.InitModel(&user, param.UpdatedUid, 0)
 	utils.StructCopy(&param, &user)
 
-	err := utils.GetGormDbWithModel(models.User{}).Create(&user).Error
+	err := s.getGormDbWithModel().Create(&user).Error
 	if err != nil {
 		return user, err
 	}

@@ -22,7 +22,8 @@ func Debug(ctx iris.Context) {
 		Uid:   ctx.URLParamIntDefault("uid", 0),
 	}
 
-	u, err := user.GetUser(param)
+	userService := user.UserService{}
+	u, err := userService.GetUser(param)
 	if err != nil {
 		ctx.JSON(response.RespFail(err.Error()))
 		return
